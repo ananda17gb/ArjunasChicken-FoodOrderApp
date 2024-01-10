@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
           builder: (context, setState) {
             return AlertDialog(
               content: Container(
-                height: 250,
+                height: 150,
                 child: Column(
                   children: [
                     Text(
@@ -168,7 +168,7 @@ class _HomePageState extends State<HomePage> {
                               builder: (BuildContext context) {
                                 return AlertDialog(
                                   content: Container(
-                                    height: 250,
+                                    height: 200,
                                     child: Column(
                                       children: [
                                         Text(
