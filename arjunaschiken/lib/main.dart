@@ -1,6 +1,5 @@
 import 'dart:convert' as convert;
 
-// import 'package:arjunaschiken/controller/order_controller.dart';
 import 'package:arjunaschiken/googlesheets.dart';
 import 'package:arjunaschiken/ordersheetscolumn.dart';
 import 'package:badges/badges.dart' as badges;
@@ -45,6 +44,10 @@ class _HomePageState extends State<HomePage> {
   TextEditingController nameController = TextEditingController();
   TextEditingController orderController = TextEditingController();
   TextEditingController totalPriceController = TextEditingController();
+  int currentBadgeCount = 0;
+
+  GlobalKey<badges.BadgeState> badgeKey = GlobalKey<badges.BadgeState>();
+
   final String urlMenu =
       "https://script.googleusercontent.com/macros/echo?user_content_key=N9rQ6lzPEQOkUArRjYDG2go2mTLQPsStOHK43fz7NdNR7AxWiSuiE-QptMHT63YERcQMVyimoBgr8eUHUdgLVwwy7eZ2Or85m5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnEHzRHiTvmafifvZvhI5BsoZIM0E6Gf2ARWZBSbs4htNkktPt8ngni84z_0p0g-lT4OTgoGLpoj-j514DE5u0ArKy3xW3KWyVg&lib=MBYGDeHNMlncPc1KEfNvrnXITz066uR_0";
 
@@ -59,9 +62,6 @@ class _HomePageState extends State<HomePage> {
 
     return listMenu;
   }
-
-  // final _formKey = GlobalKey<FormState>();
-  // final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   Future<List<Welcome>> getAllOrders() async {
     List<Welcome> listOrders = [];
@@ -99,6 +99,10 @@ class _HomePageState extends State<HomePage> {
     try {
       await Order.insert([orderData]);
 
+      // Clear the cart after successful order
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      cartProvider.clearCart();
+
       // Trigger a rebuild of the UI (replace with your logic)
       setState(() {
         // Add any UI update logic here
@@ -109,112 +113,147 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Future<void> sendOrderToSheets(
-  //     String name, String orders, double totalPrice) async {
-  //   if (name.isEmpty || orders.isEmpty) {
-  //     // Handle validation error (show error message, etc.)
-  //     return;
-  //   }
-
-  //   const String scriptURL =
-  //       "https://script.google.com/macros/AKfycbwqZ9f1GCgwbu_8Q2k1gcqF8KmVK4lglDKFOZMtUe-__Jf_3xnDHSAs-0quUqNLQq2u9w/exec";
-
-  //   try {
-  //     String queryString = "?name=$name&orders=$orders&total_price=$totalPrice";
-  //     final finalURI = Uri.parse(scriptURL + queryString);
-  //     final response = await myHttp.get(finalURI);
-
-  //     print('Order Data: $name, $orders, $totalPrice');
-
-  //     if (response.statusCode == 200) {
-  //       var bodyR = convert.jsonDecode(response.body);
-
-  //       print(bodyR);
-
-  //       // Trigger a rebuild of the UI (replace with your logic)
-  //       setState(() {
-  //         // Add any UI update logic here
-  //       });
-  //     } else {
-  //       // Failed to send order data
-  //       print('Failed to send order data. Status code: ${response.statusCode}');
-  //     }
-  //   } catch (e) {
-  //     // Handle any exceptions that occurred during the HTTP request
-  //     print('Error sending order data: $e');
-  //   }
-  // }
-
-  // void _submitForm() {
-  //   // Validate returns true if the form is valid, or false
-  //   // otherwise.
-  //   if (_formKey.currentState!.validate()) {
-  //     // If the form is valid, proceed.
-  //     Order feedbackForm = Order(
-  //         nameController.text,
-  //         CartProvider.getCartAsString(),
-  //         mobileNoController.text,
-  //         feedbackController.text);
-
-  //     orderController orderController = orderController();
-
-  //     _showSnackbar("Submitting Feedback");
-
-  //     // Submit 'feedbackForm' and save it in Google Sheets.
-  //     formController.submitForm(feedbackForm, (String response) {
-  //       print("Response: $response");
-  //       if (response == FormController.STATUS_SUCCESS) {
-  //         // Feedback is saved succesfully in Google Sheets.
-  //         _showSnackbar("Feedback Submitted");
-  //       } else {
-  //         // Error Occurred while saving data in Google Sheets.
-  //         _showSnackbar("Error Occurred!");
-  //       }
-  //     });
-  //   }
-  // }
-
   void openDialogue() {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    TextEditingController nameController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          content: Container(
-            height: 160,
-            child: Column(
-              children: [
-                Text(
-                  "Name",
-                  style: GoogleFonts.montserrat(),
-                ),
-                TextFormField(
-                  controller: nameController,
-                  decoration: InputDecoration(border: OutlineInputBorder()),
-                ),
-                SizedBox(
-                  height: 20,
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final cartProvider =
-                        Provider.of<CartProvider>(context, listen: false);
-                    final name = nameController.text;
-                    final orders = cartProvider.getCartAsString();
-                    final total_price = cartProvider.getTotalPrice();
-                    // Trigger the order sending process
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              content: Container(
+                height: 250,
+                child: Column(
+                  children: [
+                    Text(
+                      "Enter Customer Name:",
+                      style: GoogleFonts.montserrat(),
+                    ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    TextFormField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            // Close the dialog
+                            Navigator.pop(context);
+                          },
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.montserrat(),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Get the entered name
+                            final name = nameController.text;
 
-                    await sendOrderToSheets(name, orders, total_price);
-                    // Close the dialog
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    "Confirm Order",
-                    style: GoogleFonts.montserrat(),
-                  ),
-                )
-              ],
-            ),
-          ),
+                            // Show order details dialog
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  content: Container(
+                                    height: 250,
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          "Customer Name: $name",
+                                          style: GoogleFonts.montserrat(),
+                                        ),
+                                        SizedBox(
+                                          height: 10,
+                                        ),
+                                        Text(
+                                          "Orders: ${cartProvider.getCartAsString()}",
+                                          style: GoogleFonts.montserrat(),
+                                        ),
+                                        SizedBox(
+                                          height: 10,
+                                        ),
+                                        Text(
+                                          "Total Price: Rp. ${cartProvider.getTotalPrice()}",
+                                          style: GoogleFonts.montserrat(),
+                                        ),
+                                        SizedBox(
+                                          height: 20,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceAround,
+                                          children: [
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                // Close the dialog
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text(
+                                                "Cancel",
+                                                style: GoogleFonts.montserrat(),
+                                              ),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () async {
+                                                // Trigger the order sending process
+                                                await sendOrderToSheets(
+                                                    name,
+                                                    cartProvider
+                                                        .getCartAsString(),
+                                                    cartProvider
+                                                        .getTotalPrice());
+
+                                                // Reset the badge count
+                                                setState(() {
+                                                  currentBadgeCount = 0;
+                                                });
+
+                                                // Clear the cart after successful order
+                                                cartProvider.clearCart();
+
+                                                // Close the dialog
+                                                Navigator.pop(context);
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text(
+                                                "Confirm Order",
+                                                style: GoogleFonts.montserrat(),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          child: Text(
+                            "Add Order",
+                            style: GoogleFonts.montserrat(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -303,8 +342,14 @@ class _HomePageState extends State<HomePage> {
               child: badges.Badge(
                 badgeContent: Consumer<CartProvider>(
                   builder: (context, value, _) {
+                    int totalOrderQuantity = value.cart
+                        .map((cartItem) => cartItem.quantity)
+                        .fold(0, (sum, quantity) => sum + quantity);
+
                     return Text(
-                      (value.total > 0) ? value.total.toString() : "",
+                      (totalOrderQuantity > 0)
+                          ? totalOrderQuantity.toString()
+                          : "",
                       style: GoogleFonts.montserrat(color: Colors.white),
                     );
                   },
@@ -396,26 +441,7 @@ class _HomePageState extends State<HomePage> {
                                             ),
                                             Row(
                                               children: [
-                                                IconButton(
-                                                  onPressed: () {
-                                                    Provider.of<CartProvider>(
-                                                      context,
-                                                      listen: false,
-                                                    ).addRemove(
-                                                      menu.name,
-                                                      menu.id,
-                                                      false,
-                                                      menu.price,
-                                                    );
-                                                  },
-                                                  icon: Icon(
-                                                    Icons.remove_circle,
-                                                    color: Colors.red,
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  width: 10,
-                                                ),
+                                                SizedBox(width: 10),
                                                 Consumer<CartProvider>(
                                                   builder: (context, value, _) {
                                                     var id =
@@ -425,39 +451,65 @@ class _HomePageState extends State<HomePage> {
                                                           snapshot
                                                               .data![index].id,
                                                     );
-                                                    return Text(
-                                                      (id == -1)
-                                                          ? "0"
-                                                          : value
-                                                              .cart[id].quantity
+                                                    int itemQuantity =
+                                                        (id == -1)
+                                                            ? 0
+                                                            : value.cart[id]
+                                                                .quantity;
+
+                                                    return Row(
+                                                      children: [
+                                                        IconButton(
+                                                          onPressed: () {
+                                                            Provider.of<CartProvider>(
+                                                                    context,
+                                                                    listen:
+                                                                        false)
+                                                                .addRemove(
+                                                              menu.name,
+                                                              menu.id,
+                                                              false,
+                                                              menu.price,
+                                                            );
+                                                          },
+                                                          icon: Icon(
+                                                            Icons.remove_circle,
+                                                            color: Colors.red,
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        Text(
+                                                          itemQuantity
                                                               .toString(),
-                                                      textAlign: TextAlign.left,
-                                                      style: GoogleFonts
-                                                          .montserrat(
-                                                        fontSize: 15,
-                                                      ),
+                                                          textAlign:
+                                                              TextAlign.left,
+                                                          style: GoogleFonts
+                                                              .montserrat(
+                                                            fontSize: 15,
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        IconButton(
+                                                          onPressed: () {
+                                                            Provider.of<CartProvider>(
+                                                                    context,
+                                                                    listen:
+                                                                        false)
+                                                                .addRemove(
+                                                              menu.name,
+                                                              menu.id,
+                                                              true,
+                                                              menu.price,
+                                                            );
+                                                          },
+                                                          icon: Icon(
+                                                            Icons.add_circle,
+                                                            color: Colors.green,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     );
                                                   },
-                                                ),
-                                                SizedBox(
-                                                  width: 10,
-                                                ),
-                                                IconButton(
-                                                  onPressed: () {
-                                                    Provider.of<CartProvider>(
-                                                      context,
-                                                      listen: false,
-                                                    ).addRemove(
-                                                      menu.name,
-                                                      menu.id,
-                                                      true,
-                                                      menu.price,
-                                                    );
-                                                  },
-                                                  icon: Icon(
-                                                    Icons.add_circle,
-                                                    color: Colors.green,
-                                                  ),
                                                 ),
                                               ],
                                             ),
